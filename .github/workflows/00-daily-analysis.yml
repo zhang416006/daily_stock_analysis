@@ -1,10 +1,9 @@
 name: 每日股票分析
-
 on:
-    schedule:
+  schedule:
     - cron: '5 2 * * 1-5'     # UTC 02:05 = 北京时间 10:05
     - cron: '5 6 * * 1-5'     # UTC 06:05 = 北京时间 14:05
-  
+
   # 手动触发
   workflow_dispatch:
     inputs:
