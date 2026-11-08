@@ -26,7 +26,7 @@ from src.storage import IntelligenceSource, INTELLIGENCE_ITEM_NULL_SCOPE_VALUE
 from src.services.run_diagnostics import sanitize_diagnostic_text
 
 logger = logging.getLogger(__name__)
-_ALLOWED_SOURCE_TYPES = {"rss", "atom", "newsnow"}
+_ALLOWED_SOURCE_TYPES = {"rss", "atom", "newsnow", "html"}
 _ALLOWED_SCOPE_TYPES = {"symbol", "market", "sector"}
 _ALLOWED_MARKETS = {"cn", "hk", "us", "jp", "kr", "tw", "global"}
 _PRIVATE_HOSTNAMES = {"localhost", "localhost.localdomain"}
@@ -101,6 +101,86 @@ _NEWSNOW_DEFAULT_SOURCE_DEFS = [
         "source_id": "gelonghui",
         "market": "hk",
         "description": "NewsNow 格隆汇事件资讯，适合港股和中概股市场上下文。",
+    },
+]
+# 行业垂直新闻源（免费第一手站点，解析规则见 src/services/html_news_sources.yaml）
+_INDUSTRY_SOURCE_DEFS = [
+    {
+        "template_id": "industry-stcn",
+        "name": "证券时报",
+        "source_type": "html",
+        "url": "https://www.stcn.com/article/list/xw.html",
+        "description": "证券时报要闻滚动列表，全行业 A 股市场上下文。",
+    },
+    {
+        "template_id": "industry-egsea",
+        "name": "e公司快讯",
+        "source_type": "html",
+        "url": "https://www.egsea.com/live/list.html?cate=1",
+        "description": "证券时报e公司快讯直播，全行业上市公司动态。",
+    },
+    {
+        "template_id": "industry-wabei",
+        "name": "挖贝网",
+        "source_type": "html",
+        "url": "https://www.wabei.cn/roll/index.html",
+        "description": "挖贝网精选快讯，IPO/北交所/新三板垂直资讯。",
+    },
+    {
+        "template_id": "industry-jw",
+        "name": "集微网",
+        "source_type": "rss",
+        "url": "https://www.laoyaoba.com/api/rss/hbb",
+        "description": "集微网半导体行业 RSS，芯片/集成电路第一手资讯。",
+    },
+    {
+        "template_id": "industry-mydrivers",
+        "name": "快科技",
+        "source_type": "html",
+        "url": "https://news.mydrivers.com/",
+        "description": "快科技新闻页，消费电子/半导体行业资讯。",
+    },
+    {
+        "template_id": "industry-itdcw",
+        "name": "电池网",
+        "source_type": "html",
+        "url": "https://www.itdcw.com/news/hyzx/",
+        "description": "电池网行业资讯，锂电/储能/新能源汽车第一手资讯。",
+    },
+    {
+        "template_id": "industry-smm",
+        "name": "上海有色网SMM",
+        "source_type": "html",
+        "url": "https://news.smm.cn",
+        "description": "上海有色网SMM新闻首页，有色金属/能源金属行业资讯。",
+    },
+    {
+        "template_id": "industry-gasgoo",
+        "name": "盖世汽车",
+        "source_type": "html",
+        "url": "https://auto.gasgoo.com/",
+        "description": "盖世汽车资讯首页，汽车整车/零部件/智能驾驶行业资讯。",
+    },
+    {
+        "template_id": "industry-ofweek-solar",
+        "name": "OFweek光伏",
+        "source_type": "html",
+        "url": "https://solar.ofweek.com/",
+        "description": "OFweek光伏太阳能网，光伏/风电/电力设备行业资讯。",
+    },
+    {
+        "template_id": "industry-yaozh",
+        "name": "药智网",
+        "source_type": "html",
+        "url": "https://news.yaozh.com/",
+        "description": "药智网新闻中心，医药生物/化学制药/医疗器械行业资讯。",
+    },
+    {
+        "template_id": "industry-c114",
+        "name": "C114通信网",
+        "source_type": "html",
+        "url": "https://www.c114.com.cn/news/",
+        "description": "C114通信网滚动新闻，通信设备/5G/光模块行业资讯。",
     },
 ]
 
@@ -445,6 +525,12 @@ class IntelligenceService:
 
         timeout = max(1, min(float(self.config.news_intel_fetch_timeout_sec), 30.0))
         headers = {"User-Agent": "daily-stock-analysis-intel/1.0"}
+        if fields["source_type"] == "html":
+            # 行业资讯站点普遍拦截非浏览器 UA，html 源改用浏览器 UA
+            headers["User-Agent"] = (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+            )
         self._validate_url(fields["url"])
         request_url = fields["url"]
         response = None
@@ -488,6 +574,13 @@ class IntelligenceService:
                 content = response.content[: _MAX_FEED_BYTES + 1]
                 if len(content) > _MAX_FEED_BYTES:
                     raise IntelligenceServiceError("feed response is too large")
+            if fields["source_type"] == "html":
+                return self._parse_html_content(
+                    content,
+                    source_name=fields["name"],
+                    url=response.url or request_url,
+                    limit=limit,
+                )
             return self._parse_feed(content, source_name=fields["name"], limit=limit)
         except IntelligenceServiceError:
             raise
@@ -496,6 +589,26 @@ class IntelligenceService:
         finally:
             if response is not None:
                 response.close()
+
+    def _parse_html_content(
+        self, content: bytes, *, source_name: str, url: str, limit: int
+    ) -> List[FeedEntry]:
+        """html 类型资讯源：按站点解析配置提取列表页条目"""
+        from src.services.html_news_parser import parse_html_news
+
+        parsed = parse_html_news(content, url=url, source_name=source_name, limit=limit)
+        entries = []
+        for item in parsed:
+            entry = self._build_entry(
+                item.get("title") or "",
+                item.get("summary") or "",
+                item.get("url") or "",
+                source_name,
+                item.get("published"),
+            )
+            if entry:
+                entries.append(entry)
+        return entries[:limit]
 
     def _fetch_newsnow_entries(self, fields: Dict[str, Any], *, limit: int) -> List[FeedEntry]:
         timeout = max(1, min(float(self.config.news_intel_fetch_timeout_sec), 30.0))
@@ -811,6 +924,16 @@ class IntelligenceService:
                 "url": self._build_newsnow_url(item["source_id"]),
                 "scope_type": "market",
                 "market": item["market"],
+                "description": item["description"],
+            })
+        for item in _INDUSTRY_SOURCE_DEFS:
+            templates.append({
+                "template_id": item["template_id"],
+                "name": item["name"],
+                "source_type": item["source_type"],
+                "url": item["url"],
+                "scope_type": "market",
+                "market": "cn",
                 "description": item["description"],
             })
         return templates

@@ -443,6 +443,8 @@ jobs:
           MAX_WORKERS: ${{ vars.MAX_WORKERS || secrets.MAX_WORKERS || '1' }}
           # 筹码分布：默认 false（云端接口不稳定）；需启用时在 Settings → Variables 添加 ENABLE_CHIP_DISTRIBUTION=true
           ENABLE_CHIP_DISTRIBUTION: ${{ vars.ENABLE_CHIP_DISTRIBUTION || secrets.ENABLE_CHIP_DISTRIBUTION || 'false' }}
+          # 本地资讯池（RSS/NewsNow/行业 HTML 源）：开启后分析前自动建源并拉取，详见 docs/intelligence-sources.md
+          NEWS_INTEL_AUTO_FETCH_ENABLED: ${{ vars.NEWS_INTEL_AUTO_FETCH_ENABLED || secrets.NEWS_INTEL_AUTO_FETCH_ENABLED || 'false' }}
           # 实时行情数据源优先级（腾讯有量比且稳定，推荐首选）
           # 可选值: tencent, akshare_sina, efinance, akshare_em, tickflow, tushare
           # 如果有 TickFlow 或 Tushare Pro，可按权限把 tickflow / tushare 放在更靠前位置

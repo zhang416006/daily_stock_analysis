@@ -1,0 +1,116 @@
+# 行业垂直新闻源解析配置（html_news_parser.py 用）
+# 覆盖 A 股主要行业的免费第一手新闻站，2026-11-08 逐源实测正则
+# parser 类型:
+#   rss    —— 标准 RSS/Atom（intelligence_service 原生支持，一般不用 html 类型）
+#   jsonld —— 页面内嵌 JSON-LD 结构化数据（含 @graph/ItemList 嵌套）
+#   regex  —— HTML 正则（fields 里配置 title/date 两组正则）
+#   注: title 正则可从条目头跨越到日期节点（lazy .*?），相对链接由 parser 自动补全域名
+# industry_tags: 预留的行业匹配标签，供后续按个股行业过滤
+#
+# 新增站点：在此加一段配置，再在 DSA 里创建 source_type=html、url 与这里一致的资讯源即可。
+
+sources:
+  # ---- 全行业（必须接入：每只股票都可能命中） ----
+  - name: 证券时报
+    type: regex
+    url: https://www.stcn.com/article/list/xw.html
+    encoding: utf-8
+    industry_tags: ["全行业"]
+    fields:
+      # 列表项: <div class="tt"><a href="/article/detail/4327646.html">标题</a> ... .info 里 <span>20:34</span>
+      title: '<div class="tt">\s*<a href="(?P<url>/article/detail/\d+\.html)"[^>]*>(?P<title>[^<]{6,90})</a>.*?<span>(?P<date>\d{1,2}:\d{2})</span>'
+      date: '(?P<date>\d{1,2}:\d{2})'
+
+  - name: e公司快讯
+    type: regex
+    url: https://www.egsea.com/live/list.html?cate=1
+    encoding: utf-8
+    industry_tags: ["全行业"]
+    fields:
+      # 列表项: data-url=".../live/video-detail/7446.html" + 标题锚 + <span>11-05 15:37</span>
+      title: 'data-url="(?P<url>https://www\.egsea\.com/live/video-detail/\d+\.html)".*?<div class="top-video-list-item-title[^"]*">\s*<a[^>]*>(?P<title>[^<]{6,200})</a>.*?<span>(?P<date>\d{2}-\d{2}\s\d{2}:\d{2})</span>'
+      date: '(?P<date>\d{2}-\d{2}\s\d{2}:\d{2})'
+
+  - name: 挖贝网
+    type: regex
+    url: https://www.wabei.cn/roll/index.html
+    encoding: utf-8
+    industry_tags: ["IPO", "北交所", "新三板", "全行业"]
+    fields:
+      # 列表项: <h4><a href="/Home/News/368289">标题</a> ... <span class="time ">11-06 20:34</span>
+      title: '<h4>\s*<a href="(?P<url>/Home/News/\d+)"[^>]*>(?P<title>[^<]{8,80})</a>.*?<span class="time [^"]*">(?P<date>\d{2}-\d{2}\s\d{2}:\d{2})</span>'
+      date: '(?P<date>\d{2}-\d{2}\s\d{2}:\d{2})'
+
+  # ---- 半导体 / 电子 ----
+  - name: 快科技
+    type: regex
+    url: https://news.mydrivers.com/
+    encoding: utf-8
+    industry_tags: ["消费电子", "半导体", "计算机设备"]
+    fields:
+      # 列表项: <h3><a href=".../1/1164/1164109.htm">标题</a> ... <span class="time">2026-11-08 20:10</span>
+      title: '<h3><a href="(?P<url>https://news\.mydrivers\.com/\d+/\d+/\d+\.htm)"[^>]*>(?P<title>[^<]{6,90})</a>.*?<span class="time">(?P<date>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})</span>'
+      date: '(?P<date>\d{4}-\d{2}-\d{2})'
+
+  # ---- 电池 / 锂电 / 储能（用户点名） ----
+  - name: 电池网
+    type: regex
+    url: https://www.itdcw.com/news/hyzx/
+    encoding: utf-8
+    industry_tags: ["电池", "锂电", "储能", "锂电池", "新能源汽车", "电力设备"]
+    fields:
+      # 行业资讯列表页: <h2><a href=".../news/hyzx/110515Z342026.html">标题</a> ... <span class="time">2026-11-05</span>
+      title: '<h2><a href="(?P<url>https://www\.itdcw\.com/news/[a-z]+/\w+\.html)"[^>]*>(?P<title>[^<]{6,100})</a>.*?<span class="time">(?P<date>\d{4}-\d{2}-\d{2})</span>'
+      date: '(?P<date>\d{4}-\d{2}-\d{2})'
+
+  # ---- 有色 / 金属 ----
+  - name: 上海有色网SMM
+    type: jsonld
+    url: https://news.smm.cn
+    encoding: utf-8
+    industry_tags: ["有色金属", "工业金属", "能源金属", "贵金属", "铜", "锂", "稀土"]
+
+  # ---- 汽车 ----
+  - name: 盖世汽车
+    type: regex
+    url: https://auto.gasgoo.com/
+    encoding: utf-8
+    industry_tags: ["汽车", "汽车零部件", "智能驾驶", "新能源汽车"]
+    fields:
+      # 列表项: <a href=".../news/202611/6I70477212C106.shtml">标题</a><span>2026-11-06</span>
+      # （锚定必须带日期 span 的条目，避免匹配到首页无日期的大头条区）
+      title: 'href="(?P<url>https://auto\.gasgoo\.com/news/\d{6}/\w+\.shtml)"[^>]*>(?P<title>[^<]{6,90})</a><span>(?P<date>\d{4}-\d{2}-\d{2})</span>'
+      date: '(?P<date>\d{4}-\d{2}-\d{2})'
+
+  # ---- 光伏 / 电力 ----
+  - name: OFweek光伏
+    type: regex
+    url: https://solar.ofweek.com/
+    encoding: gbk
+    industry_tags: ["光伏", "电力设备", "风电", "电源设备"]
+    fields:
+      # <a href=".../2026-11/ART-260006-12000-30710373.html" title="...">标题</a>；页面无日期，取 URL 里的 YYYY-MM（归一化为当月1日）
+      title: 'href="(?P<url>https://solar\.ofweek\.com/\d{4}-\d{2}/ART-\d+-\d+-\d+\.html)"[^>]*>(?P<title>[^<]{6,90})</a>'
+      date: '(?P<date>20\d{2}-\d{2})'
+
+  # ---- 医药 ----
+  - name: 药智网
+    type: regex
+    url: https://news.yaozh.com/
+    encoding: utf-8
+    industry_tags: ["医药生物", "化学制药", "生物制品", "医疗器械", "中药"]
+    fields:
+      # 主列表: <a href="/archive/49343.html" target="_blank"><div class="list clearfix"> ... <h2 class="co_title"><span>标题</span> ... <span class="co_name"><span>2026-11-06</span>
+      title: '<a href="(?P<url>/archive/\d+\.html)" target="_blank"><div class="list clearfix">.*?<h2 class="co_title"><span>(?P<title>[^<]{6,100})</span>.*?<span class="co_name"><span>(?P<date>\d{4}-\d{2}-\d{2})</span>'
+      date: '(?P<date>\d{4}-\d{2}-\d{2})'
+
+  # ---- 通信 ----
+  - name: C114通信网
+    type: regex
+    url: https://www.c114.com.cn/news/
+    encoding: gb18030
+    industry_tags: ["通信设备", "通信服务", "5G", "光模块"]
+    fields:
+      # 滚动列表: <div class="roll-time">1小时前</div><h6 class="roll-tit"><a href=".../news/16/a1320676.html">标题</a>
+      title: '<h6 class="roll-tit"><a href="(?P<url>https://www\.c114\.com\.cn/[a-z]+/\d+/a\d+\.html)"[^>]*>(?P<title>[^<]{6,90})</a>'
+      date: '(?P<date>\d+小时前|\d+分钟前)'

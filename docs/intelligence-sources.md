@@ -6,7 +6,8 @@ Issue #1707 的首版能力聚焦“合规资讯源采集、本地沉淀、可�
 
 - 支持配置 RSS / Atom HTTP(S) 资讯源。
 - 支持 NewsNow HTTP JSON 源，默认内置财联社热门、雪球热门股票、华尔街见闻快讯、金十数据和格隆汇事件等主流财经源。
-- 支持查询内置 RSS/Atom/NewsNow 模板，并可从模板创建可测试、可启停的资讯源；也可以一键创建全部内置默认源。
+- 支持 `source_type=html` 行业垂直资讯源：抓取站点列表页 HTML，按 `src/services/html_news_sources.yaml` 的站点解析规则提取标题/链接/发布时间；默认内置证券时报、e公司快讯、挖贝网、集微网、快科技、电池网、上海有色网SMM、盖世汽车、OFweek光伏、药智网、C114通信网等 A 股行业源。
+- 支持查询内置 RSS/Atom/NewsNow/HTML 模板，并可从模板创建可测试、可启停的资讯源；也可以一键创建全部内置默认源。
 - 保存资讯源配置、启用状态、作用域和最近一次拉取状态。
 - 拉取条目落库到 `intelligence_items`，保存标题、摘要、URL、来源、发布时间、拉取时间、市场与作用域。
 - 按 URL 去重；无 URL 条目使用 `no-url:intel:<hash>` 兜底键。
@@ -101,6 +102,16 @@ GET {NEWSNOW_BASE_URL}/api/s?id=cls-hot
 - `gelonghui`：格隆汇事件，偏港股和中概股上下文。
 
 如果需要更多国内平台，可以继续通过 `POST /sources` 手动添加 NewsNow 源，`source_type=newsnow`，`url` 填 `https://<your-newsnow>/api/s?id=<source_id>`。如果更偏好 RSS，也可以用 RSSHub 等合规 RSS 源继续按 `source_type=rss` 接入。
+
+## 行业垂直 HTML 源
+
+`source_type=html` 用于没有 RSS 的免费行业垂直站点：抓取列表页 HTML 后按站点解析规则提取条目，规则集中维护在 `src/services/html_news_sources.yaml`。
+
+- 默认内置行业源（模板 ID 前缀 `industry-`）：证券时报 / e公司快讯 / 挖贝网（全行业），集微网（半导体 RSS）、快科技（消费电子）、电池网（锂电/储能）、上海有色网SMM（有色金属）、盖世汽车（汽车）、OFweek光伏（光伏/电力）、药智网（医药）、C114通信网（通信）。
+- 站点解析规则按 URL 精确或同域匹配；`encoding` 字段处理 GBK/GB18030 站点；相对链接自动补全为绝对 URL。
+- 发布时间支持「11月5日」「20:34」「11-06 20:34」「1小时前」「2026-11」等站点格式；无法解析时回退为抓取时间，避免条目被时间窗过滤。
+- 新增站点：在 `html_news_sources.yaml` 中按现有格式添加一段配置（`regex`/`jsonld`/`rss` 三类解析器），再创建 `source_type=html` 且 URL 一致的资讯源即可，无需改代码。
+- HTML 源与 RSS/Atom 共享同一套 URL 安全校验、重定向校验、响应大小上限和 fail-open 拉取语义；不使用 headless 浏览器，不做反爬对抗。
 
 ## 后续接入建议
 

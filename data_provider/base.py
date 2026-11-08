@@ -1800,7 +1800,8 @@ class DataFetcherManager:
         - 未配置的可选数据源不实例化，避免在批量拉取时反复探测无效源
         - 默认优先级：
           0. EfinanceFetcher (Priority 0) - 最高优先级
-          1. AkshareFetcher (Priority 1)
+          1. LocalChipFetcher (Priority 1) - 本地推演筹码（仅筹码链路）
+          2. AkshareFetcher (Priority 1)
           2. PytdxFetcher (Priority 2) - 通达信
           3. BaostockFetcher (Priority 3)
           4. YfinanceFetcher (Priority 4)
@@ -1810,6 +1811,7 @@ class DataFetcherManager:
         from .efinance_fetcher import EfinanceFetcher
         from .tencent_fetcher import TencentFetcher
         from .akshare_fetcher import AkshareFetcher
+        from .local_chip_fetcher import LocalChipFetcher
         from .tushare_fetcher import TushareFetcher
         from .tickflow_fetcher import TickFlowFetcher
         from .pytdx_fetcher import PytdxFetcher
@@ -1822,6 +1824,8 @@ class DataFetcherManager:
         efinance = EfinanceFetcher()
         tencent = TencentFetcher()
         akshare = AkshareFetcher()
+        # 本地推演筹码源：ak.stock_cyq_em 已失效，排在 akshare 之前作为首选筹码源
+        local_chip = LocalChipFetcher()
         pytdx = PytdxFetcher()      # 通达信数据源（可配 PYTDX_HOST/PYTDX_PORT）
         baostock = BaostockFetcher()
         yfinance = YfinanceFetcher()
@@ -1892,6 +1896,7 @@ class DataFetcherManager:
         with self._fetchers_lock:
             self._fetchers = [
                 efinance,
+                local_chip,
                 akshare,
                 pytdx,
                 baostock,
