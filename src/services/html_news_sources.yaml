@@ -114,3 +114,23 @@ sources:
       # 滚动列表: <div class="roll-time">1小时前</div><h6 class="roll-tit"><a href=".../news/16/a1320676.html">标题</a>
       title: '<h6 class="roll-tit"><a href="(?P<url>https://www\.c114\.com\.cn/[a-z]+/\d+/a\d+\.html)"[^>]*>(?P<title>[^<]{6,90})</a>'
       date: '(?P<date>\d+小时前|\d+分钟前)'
+
+  # ---- 船舶 / 海工 / 航运 ----
+  - name: 龙de船人-船厂订单
+    type: regex
+    url: https://www.imarine.cn/shipbuilding/order
+    encoding: utf-8
+    industry_tags: ["船舶制造", "航海装备", "国防军工", "海工装备", "航运"]
+    fields:
+      # <h2 class="entry-title"><a href=".../252356.html">标题</a></h2> ... <span class="entry-date"> 2026-11-09 </span>
+      title: '<h2 class="entry-title"><a href="(?P<url>https://www\.imarine\.cn/\d+\.html)">(?P<title>[^<]{6,90})</a></h2>.*?<span class="entry-date">\s*(?P<date>\d{4}-\d{2}-\d{2})'
+      date: '(?P<date>\d{4}-\d{2}-\d{2})'
+
+  - name: 龙de船人-航运
+    type: regex
+    url: https://www.imarine.cn/shipping
+    encoding: utf-8
+    industry_tags: ["航运", "港口", "航海装备", "船舶制造"]
+    fields:
+      title: '<h2 class="entry-title"><a href="(?P<url>https://www\.imarine\.cn/\d+\.html)">(?P<title>[^<]{6,90})</a></h2>.*?<span class="entry-date">\s*(?P<date>\d{4}-\d{2}-\d{2})'
+      date: '(?P<date>\d{4}-\d{2}-\d{2})'

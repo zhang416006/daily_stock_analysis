@@ -182,6 +182,20 @@ _INDUSTRY_SOURCE_DEFS = [
         "url": "https://www.c114.com.cn/news/",
         "description": "C114通信网滚动新闻，通信设备/5G/光模块行业资讯。",
     },
+    {
+        "template_id": "industry-imarine-order",
+        "name": "龙de船人-船厂订单",
+        "source_type": "html",
+        "url": "https://www.imarine.cn/shipbuilding/order",
+        "description": "龙de船人船厂订单栏目，船舶/海工新船订单第一手资讯。",
+    },
+    {
+        "template_id": "industry-imarine-shipping",
+        "name": "龙de船人-航运",
+        "source_type": "html",
+        "url": "https://www.imarine.cn/shipping",
+        "description": "龙de船人航运栏目，航运市场/港口/船舶交付动态。",
+    },
 ]
 
 
